@@ -44,3 +44,7 @@ for video_id in video_ids:
 
 # Salva a planilha Excel
 wb.save('comentarios_videos.xlsx')
+
+# Este código irá extrair os comentários de todos os vídeos cujos IDs estão na lista video_ids, organizá-los por data e salvar todos os dados disponíveis de cada comentário em um arquivo Excel chamado comentarios_videos.xlsx.
+
+
