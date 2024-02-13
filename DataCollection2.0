@@ -1,0 +1,46 @@
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from openpyxl import Workbook
+
+# Substitua 'YOUR_API_KEY' pelo seu próprio chave da API do YouTube
+api_key = 'YOUR_API_KEY'
+
+# Construa o serviço da API do YouTube
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+# Lista de IDs de vídeos coletados anteriormente (substitua pelos IDs coletados)
+video_ids = ['video_id_1', 'video_id_2', 'video_id_3']
+
+# Cria uma nova planilha Excel
+wb = Workbook()
+ws = wb.active
+
+# Adiciona cabeçalhos
+ws.append(['Título do Vídeo', 'Data do Comentário', 'Nome do Usuário', 'Comentário'])
+
+# Itera sobre os IDs de vídeo e extrai os comentários
+for video_id in video_ids:
+    comments_request = youtube.commentThreads().list(
+        part='snippet',
+        videoId=video_id,
+        maxResults=100,  # Número máximo de comentários por solicitação
+        textFormat='plainText'
+    )
+
+    while comments_request:
+        comments_response = comments_request.execute()
+
+        for comment in comments_response['items']:
+            comment_text = comment['snippet']['topLevelComment']['snippet']['textDisplay']
+            comment_date = comment['snippet']['topLevelComment']['snippet']['publishedAt']
+            commenter_name = comment['snippet']['topLevelComment']['snippet']['authorDisplayName']
+            video_title = comment['snippet']['videoTitle']
+
+            # Adiciona os dados do comentário à planilha
+            ws.append([video_title, comment_date, commenter_name, comment_text])
+
+        # Verifica se há mais páginas de comentários
+        comments_request = youtube.commentThreads().list_next(comments_request, comments_response)
+
+# Salva a planilha Excel
+wb.save('comentarios_videos.xlsx')
