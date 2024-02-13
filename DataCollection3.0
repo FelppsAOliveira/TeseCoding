@@ -1,0 +1,105 @@
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+from openpyxl import Workbook
+import os
+
+# Configurações para autenticação OAuth 2.0
+SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
+flow = InstalledAppFlow.from_client_secrets_file(
+    'client_secret.json', SCOPES)
+
+# Autenticação OAuth 2.0
+credentials = flow.run_console()
+
+# Substitua 'YOUR_API_KEY' pelo seu próprio chave da API do YouTube
+api_key = 'YOUR_API_KEY'
+
+# Construa o serviço da API do YouTube
+youtube = build('youtube', 'v3', credentials=credentials)
+
+# Realiza a busca por vídeos com o termo 'globalismo'
+search_request = youtube.search().list(
+    q='globalismo',
+    type='video',
+    part='id',
+    maxResults=50  # Número máximo de resultados
+)
+
+search_response = search_request.execute()
+
+# Lista para armazenar os IDs dos vídeos coletados
+video_ids = []
+
+# Extrai os IDs dos vídeos da busca
+for item in search_response['items']:
+    video_ids.append(item['id']['videoId'])
+
+# Cria uma nova planilha Excel para os comentários e informações dos vídeos
+wb = Workbook()
+ws = wb.active
+ws.title = 'Comentários e Informações dos Vídeos'
+
+# Adiciona cabeçalhos para os comentários
+ws.append(['Título do Vídeo', 'Data de Publicação', 'Visualizações', 'Curtidas', 'Descurtidas', 'Descrição', 'Data do Comentário', 'Nome do Usuário', 'Comentário'])
+
+# Cria um diretório para salvar os arquivos de transcrição
+if not os.path.exists('transcricoes'):
+    os.makedirs('transcricoes')
+
+# Itera sobre os IDs de vídeo e extrai os comentários e informações dos vídeos
+for video_id in video_ids:
+    # Obtém informações do vídeo
+    video_response = youtube.videos().list(
+        part='snippet,statistics',
+        id=video_id
+    ).execute()
+
+    video_info = video_response['items'][0]['snippet']
+    video_statistics = video_response['items'][0]['statistics']
+
+    video_title = video_info['title']
+    video_published_date = video_info['publishedAt']
+    video_views = video_statistics.get('viewCount', 'N/A')
+    video_likes = video_statistics.get('likeCount', 'N/A')
+    video_dislikes = video_statistics.get('dislikeCount', 'N/A')
+    video_description = video_info.get('description', 'N/A')
+
+    # Extrai os comentários do vídeo
+    comments_request = youtube.commentThreads().list(
+        part='snippet',
+        videoId=video_id,
+        maxResults=100,  # Número máximo de comentários por solicitação
+        textFormat='plainText'
+    )
+
+    # Lista para armazenar os comentários organizados por data
+    comments_by_date = []
+
+    while comments_request:
+        comments_response = comments_request.execute()
+
+        for comment in comments_response['items']:
+            comment_text = comment['snippet']['topLevelComment']['snippet']['textDisplay']
+            comment_date = comment['snippet']['topLevelComment']['snippet']['publishedAt']
+            commenter_name = comment['snippet']['topLevelComment']['snippet']['authorDisplayName']
+
+            # Adiciona os dados do comentário à planilha
+            ws.append([video_title, video_published_date, video_views, video_likes, video_dislikes, video_description, comment_date, commenter_name, comment_text])
+
+            # Adiciona os comentários à lista para organização por data
+            comments_by_date.append((comment_date, commenter_name, comment_text))
+
+        # Verifica se há mais páginas de comentários
+        comments_request = youtube.commentThreads().list_next(comments_request, comments_response)
+
+    # Organiza os comentários por data
+    comments_by_date.sort(key=lambda x: x[0])
+
+    # Salva os comentários organizados em um arquivo de texto com padrão Unicode
+    with open(f'transcricoes/{video_id}_transcricao.txt', 'w', encoding='utf-8') as f:
+        for comment_data in comments_by_date:
+            _, _, comment_text = comment_data
+            f.write(f'{comment_text}\n\n')
+
+# Salva a planilha Excel
+wb.save('comentarios_e_informacoes_videos_globalismo.xlsx')
