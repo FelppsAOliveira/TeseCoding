@@ -1,0 +1,37 @@
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
+# Configurações para autenticação OAuth 2.0
+SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
+flow = InstalledAppFlow.from_client_secrets_file(
+    'client_secret.json', SCOPES)
+
+# Autenticação OAuth 2.0
+credentials = flow.run_console()
+
+# Substitua 'YOUR_API_KEY' pelo seu próprio chave da API do YouTube
+api_key = 'YOUR_API_KEY'
+
+# Construa o serviço da API do YouTube
+youtube = build('youtube', 'v3', credentials=credentials)
+
+# Realiza a busca por vídeos com o termo 'globalismo' no contexto brasileiro até 13 de junho de 2019
+search_request = youtube.search().list(
+    q='globalismo',
+    type='video',
+    part='id',
+    maxResults=50,  # Número máximo de resultados
+    regionCode='BR',  # Código da região para buscar vídeos brasileiros
+    publishedBefore='2019-06-14T00:00:00Z'  # Data de publicação até a qual os vídeos serão pesquisados
+)
+
+search_response = search_request.execute()
+
+# Lista para armazenar os IDs dos vídeos coletados
+video_ids = []
+
+# Extrai os IDs dos vídeos da busca
+for item in search_response['items']:
+    video_ids.append(item['id']['videoId'])
+
+print(f"Foram encontrados {len(video_ids)} vídeos com o termo 'globalismo' no contexto brasileiro até 13 de junho de 2019.")
