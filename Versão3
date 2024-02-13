@@ -1,0 +1,58 @@
+from google_auth_oauthlib.flow import InstalledAppFlow
+from googleapiclient.discovery import build
+
+# Configurações para autenticação OAuth 2.0
+SCOPES = ['https://www.googleapis.com/auth/youtube.force-ssl']
+flow = InstalledAppFlow.from_client_secrets_file(
+    'client_secret.json', SCOPES)
+
+# Autenticação OAuth 2.0
+credentials = flow.run_console()
+
+# Substitua 'YOUR_API_KEY' pelo seu próprio chave da API do YouTube
+api_key = 'YOUR_API_KEY'
+
+# Construa o serviço da API do YouTube
+youtube = build('youtube', 'v3', credentials=credentials)
+
+# Realiza a busca por vídeos com o termo 'globalismo' no contexto brasileiro até 13 de junho de 2019
+search_request = youtube.search().list(
+    q='globalismo',
+    type='video',
+    part='id',
+    maxResults=50,  # Número máximo de resultados
+    regionCode='BR',  # Código da região para buscar vídeos brasileiros
+    publishedBefore='2019-06-14T00:00:00Z'  # Data de publicação até a qual os vídeos serão pesquisados
+)
+
+search_response = search_request.execute()
+
+# Lista para armazenar os IDs dos vídeos coletados
+video_ids = []
+
+# Extrai os IDs dos vídeos da busca
+for item in search_response['items']:
+    video_ids.append(item['id']['videoId'])
+
+# Lista para armazenar os comentários dos vídeos
+video_comments = []
+
+# Coleta os comentários de cada vídeo
+for video_id in video_ids:
+    comments_request = youtube.commentThreads().list(
+        part='snippet',
+        videoId=video_id,
+        maxResults=100  # Número máximo de comentários por solicitação
+    )
+
+    while comments_request:
+        comments_response = comments_request.execute()
+
+        for comment in comments_response['items']:
+            comment_text = comment['snippet']['topLevelComment']['snippet']['textDisplay']
+            video_comments.append(comment_text)
+
+        # Verifica se há mais páginas de comentários
+        comments_request = youtube.commentThreads().list_next(comments_request, comments_response)
+
+print(f"Foram coletados {len(video_comments)} comentários dos vídeos relacionados ao termo 'globalismo' no contexto brasileiro até 13 de junho de 2019.")
