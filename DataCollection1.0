@@ -1,0 +1,38 @@
+from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials
+from openpyxl import Workbook
+
+# Substitua 'YOUR_API_KEY' pelo seu próprio chave da API do YouTube
+api_key = 'YOUR_API_KEY'
+
+# Construa o serviço da API do YouTube
+youtube = build('youtube', 'v3', developerKey=api_key)
+
+# Realiza a busca por vídeos com o termo 'globalismo'
+request = youtube.search().list(
+    q='globalismo',
+    type='video',
+    part='id,snippet',
+    maxResults=50  # Número máximo de resultados
+)
+
+response = request.execute()
+
+# Cria uma nova planilha Excel
+wb = Workbook()
+ws = wb.active
+
+# Adiciona cabeçalhos
+ws.append(['Título', 'Descrição', 'ID do Vídeo', 'URL'])
+
+# Itera sobre os resultados da busca e os adiciona à planilha
+for item in response['items']:
+    video_title = item['snippet']['title']
+    video_description = item['snippet']['description']
+    video_id = item['id']['videoId']
+    video_url = f'https://www.youtube.com/watch?v={video_id}'
+    
+    ws.append([video_title, video_description, video_id, video_url])
+
+# Salva a planilha Excel
+wb.save('resultados_globalismo.xlsx')
